@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
@@ -34,6 +35,22 @@ void printLiteral(uint8_t* buffer, int index) {
 }
 
 void printDisassembly(uint8_t* buffer, int index) {
+	#if defined(__APPLE__) || defined(__linux__)
+		char* red = KRED;
+		char* green = KGRN;
+		char* magenta = KMAG;
+		char* yellow = KYEL;
+		char* blue = KBLU;
+		char* norm = KNRM;
+	#else
+		char* red = "";
+		char* green = "";
+		char* magenta = "";
+		char* yellow = "";
+		char* blue = "";
+		char* norm = "";
+	#endif
+
 	uint8_t oc = buffer[index]; // OpCode
 
 	if (oc == 0x00) {
@@ -176,12 +193,14 @@ void printDisassembly(uint8_t* buffer, int index) {
 		printf("ret");
 	} else if (oc == 0xff) {
 		printf("syscall");
+	} else {
+		printf("%s???%s", red, red);
 	}
 }
 
 int main(int argc, char* argv[]) {
 	if (argc >= 2) {
-		#ifdef __APPLE__
+		#if defined(__APPLE__) || defined(__linux__)
 			char* red = KRED;
 			char* green = KGRN;
 			char* magenta = KMAG;
