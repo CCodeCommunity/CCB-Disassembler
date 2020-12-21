@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+
 int8_t getOpcodeWidth(int8_t opcode) {
 	if (opcode == 0x07 || opcode == 0x0b)
 		return 9;
@@ -172,6 +181,22 @@ void printDisassembly(uint8_t* buffer, int index) {
 
 int main(int argc, char* argv[]) {
 	if (argc >= 2) {
+		#ifdef __APPLE__
+			char* red = KRED;
+			char* green = KGRN;
+			char* magenta = KMAG;
+			char* yellow = KYEL;
+			char* blue = KBLU;
+			char* norm = KNRM;
+		#else
+			char* red = "";
+			char* green = "";
+			char* magenta = "";
+			char* yellow = "";
+			char* blue = "";
+			char* norm = "";
+		#endif
+
 		// open file
 		FILE* fileptr = fopen(argv[1], "rb");
 		
@@ -189,34 +214,50 @@ int main(int argc, char* argv[]) {
 
 		int i = 0;
 
+		// skip past the buffer
 		while (buffer[i] != 0x1d || buffer[i + 1] != 0x1d || buffer[i + 2] != 0x1d || buffer[i + 3] != 0x1d) {
 			++i;
 		}
 
-		printf("headerLength = %d bytes\n\ncode disassembly:\n", i);
+		int headerSize = i;
+		int opcodeCount = 0;
+
+		printf("%scode disassembly:%s\n", green, norm);
 
 		i += 4;
 
 		while (i < fileLen) {
-			printf("%08X | ", i);
+			++opcodeCount;
+			printf("%s%08X%s │ ", red, i, norm);
 
 			int start = i;
 
 			int8_t width = getOpcodeWidth(buffer[i]);
-			for (int j = 0; j < width; j++) {
+
+			printf("%s", yellow);
+			for (int j = 0; j < width; j++)
 				printf("%02x ", (uint8_t)buffer[i++]);
-			}
+			printf("%s", norm);
 
-			for (int j = 0; j < (9 - width); j++) {
+
+			for (int j = 0; j < (9 - width); j++)
 				printf("   ");
-			}
 
-			printf("| ");
+			printf("│ ");
 
+			printf("%s", magenta);
 			printDisassembly(buffer, start);
+			printf("%s", norm);
+
 			puts("");
 		}
+
+		printf("\n%sinfo:%s\n", green, norm);
+		printf("%sheader size:%s          %d bytes\n", red, yellow, headerSize);
+		printf("%sopcode count:%s         %d opcodes\n", red, yellow, opcodeCount);
+		printf("%sdisassembler version:%s V1.0.1\n", red, yellow);
+		printf("%s", norm);
 	} else {
-		puts("CC Disassembler V1.0.0");
+		puts("CC Disassembler V1.0.1");
 	}
 }
