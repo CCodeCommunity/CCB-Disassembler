@@ -277,6 +277,6 @@ int main(int argc, char* argv[]) {
 		printf("%sdisassembler version:%s V1.0.1\n", red, yellow);
 		printf("%s", norm);
 	} else {
-		puts("CC Disassembler V1.0.1");
+		puts("CC Disassembler V1.0.2");
 	}
 }
