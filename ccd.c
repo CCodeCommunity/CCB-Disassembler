@@ -1,15 +1,10 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include "ccd.h"
 
-#define KNRM  "\x1B[0m"
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-#define KBLU  "\x1B[34m"
-#define KMAG  "\x1B[35m"
-#define KCYN  "\x1B[36m"
-#define KWHT  "\x1B[37m"
+int64_t timeInMilliseconds() {
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    return ((int64_t) time.tv_sec) * 1000 + ((int64_t) time.tv_nsec) / 1000000;
+}
 
 int8_t getOpcodeWidth(int8_t opcode) {
 	if (opcode == 0x07 || opcode == 0x0b)
@@ -34,23 +29,32 @@ void printLiteral(uint8_t* buffer, int index) {
 	printf("%d", ((buffer[index]) << 24) | ((buffer[index + 1]) << 16) | ((buffer[index + 2]) << 8) | (buffer[index + 3]));
 }
 
-void printDisassembly(uint8_t* buffer, int index) {
-	#if defined(__APPLE__) || defined(__linux__)
-		char* red = KRED;
-		char* green = KGRN;
-		char* magenta = KMAG;
-		char* yellow = KYEL;
-		char* blue = KBLU;
-		char* norm = KNRM;
-	#else
-		char* red = "";
-		char* green = "";
-		char* magenta = "";
-		char* yellow = "";
-		char* blue = "";
-		char* norm = "";
-	#endif
+char* readFile(char* fileName, uint32_t* fileSize) {
+	// open file
+	FILE* fileptr = fopen(fileName, "rb");
+	
+	// determain file size
+	fseek(fileptr, 0, SEEK_END);
+	*fileSize = ftell(fileptr);
+	rewind(fileptr);
 
+	// load file into bugger
+	uint8_t* buffer = (uint8_t*)malloc(*fileSize * sizeof(int8_t));
+	fread(buffer, *fileSize, 1, fileptr);
+
+	// close file
+	fclose(fileptr);
+
+	return buffer;
+}
+
+void printHeader() {
+	printf("%scode disassembly:%s\n", GREEN, NORM);
+	printf("address  | bytes                      | Disassembly\n");
+	printf("---------------------------------------------------\n");
+}
+
+uint8_t printDisassembly(uint8_t* buffer, int index) {
 	uint8_t oc = buffer[index]; // OpCode
 
 	if (oc == 0x00) {
@@ -194,89 +198,9 @@ void printDisassembly(uint8_t* buffer, int index) {
 	} else if (oc == 0xff) {
 		printf("syscall");
 	} else {
-		printf("%s???%s", red, red);
+		printf("%s??? (unknown instruction)%s", RED, RED);
+		return 1;
 	}
-}
 
-int main(int argc, char* argv[]) {
-	if (argc >= 2) {
-		#if defined(__APPLE__) || defined(__linux__)
-			char* red = KRED;
-			char* green = KGRN;
-			char* magenta = KMAG;
-			char* yellow = KYEL;
-			char* blue = KBLU;
-			char* norm = KNRM;
-		#else
-			char* red = "";
-			char* green = "";
-			char* magenta = "";
-			char* yellow = "";
-			char* blue = "";
-			char* norm = "";
-		#endif
-
-		// open file
-		FILE* fileptr = fopen(argv[1], "rb");
-		
-		// determain file size
-		fseek(fileptr, 0, SEEK_END);
-		int32_t fileLen = ftell(fileptr);
-		rewind(fileptr);
-
-		// load file into bugger
-		uint8_t* buffer = (uint8_t*)malloc(fileLen * sizeof(int8_t));
-		fread(buffer, fileLen, 1, fileptr);
-
-		// close file
-		fclose(fileptr);
-
-		int i = 0;
-
-		// skip past the buffer
-		while (buffer[i] != 0x1d || buffer[i + 1] != 0x1d || buffer[i + 2] != 0x1d || buffer[i + 3] != 0x1d) {
-			++i;
-		}
-
-		int headerSize = i;
-		int opcodeCount = 0;
-
-		printf("%scode disassembly:%s\n", green, norm);
-
-		i += 4;
-
-		while (i < fileLen) {
-			++opcodeCount;
-			printf("%s%08X%s │ ", red, i, norm);
-
-			int start = i;
-
-			int8_t width = getOpcodeWidth(buffer[i]);
-
-			printf("%s", yellow);
-			for (int j = 0; j < width; j++)
-				printf("%02x ", (uint8_t)buffer[i++]);
-			printf("%s", norm);
-
-
-			for (int j = 0; j < (9 - width); j++)
-				printf("   ");
-
-			printf("│ ");
-
-			printf("%s", magenta);
-			printDisassembly(buffer, start);
-			printf("%s", norm);
-
-			puts("");
-		}
-
-		printf("\n%sinfo:%s\n", green, norm);
-		printf("%sheader size:%s          %d bytes\n", red, yellow, headerSize);
-		printf("%sopcode count:%s         %d opcodes\n", red, yellow, opcodeCount);
-		printf("%sdisassembler version:%s V1.0.1\n", red, yellow);
-		printf("%s", norm);
-	} else {
-		puts("CC Disassembler V1.0.2");
-	}
+	return 0;
 }
